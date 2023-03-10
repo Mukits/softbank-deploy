@@ -1,0 +1,7 @@
+*.log
+*.class
+*.lst
+*.jar
+.netbeans_automatic_build
+target/
+.vscode/

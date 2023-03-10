@@ -1,0 +1,6 @@
+<!-- look https://spotbugs.readthedocs.io/en/latest/filter.html -->
+<FindBugsFilter>
+    <Match>
+        <Bug category="SECURITY"/>
+    </Match>
+</FindBugsFilter>

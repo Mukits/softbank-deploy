@@ -1,0 +1,46 @@
+# You can override the included template(s) by including variable overrides
+# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Secret Detection customization: https://docs.gitlab.com/ee/user/application_security/secret_detection/#customizing-settings
+# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
+# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
+stages:
+  - build
+  - test
+  - deploy
+
+sast:
+  stage: test
+include:
+  - template: Security/SAST.gitlab-ci.yml
+
+build-job:
+  stage: build
+  image:
+    name: maven:3-jdk-11
+
+  artifacts:
+    paths:
+      - Softbank-1.0-SNAPSHOT.war
+  script:
+    - 'mvn ${MAVEN_CLI_OPTS} package'
+    - cp target/Softbank-1.0-SNAPSHOT.war Softbank-1.0-SNAPSHOT.war
+
+deploy-job:
+  stage: deploy
+  before_script:
+    - 'command -v ssh-agent >/dev/null || ( apk add --update openssh )' 
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $VM_IPADDRESS >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+  #- '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+  - scp Softbank-1.0-SNAPSHOT.war $SSH_USER@$VM_IPADDRESS:/opt/tomcat/webapps/$MY_PROJECT_NAME.war
+  - echo 'scp Softbank-1.0-SNAPSHOT.war $SSH_USER@$VM_IPADDRESS:/opt/tomcat/webapps/$MY_PROJECT_NAME.war'
+
+#NOTE: setting "Host StrictHostKeyChecking no" could be a security issue. A better solution would be to setup the known_hosts file with the hosts key before trying to connect to it.
+
